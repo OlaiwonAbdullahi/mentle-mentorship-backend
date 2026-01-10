@@ -9,8 +9,6 @@ const getDashboardStats = async (req, res) => {
   try {
     // Total courses
     const totalCourses = await Course.countDocuments();
-    const publishedCourses = await Course.countDocuments({ isPublished: true });
-
     // Total contact messages
     const totalMessages = await Contact.countDocuments();
     const unreadMessages = await Contact.countDocuments({ isRead: false });
@@ -88,8 +86,6 @@ const getDashboardStats = async (req, res) => {
       data: {
         courses: {
           total: totalCourses,
-          published: publishedCourses,
-          unpublished: totalCourses - publishedCourses,
         },
         messages: {
           total: totalMessages,
