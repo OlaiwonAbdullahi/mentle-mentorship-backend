@@ -36,15 +36,7 @@ const createCourseValidator = [
     .withMessage("Course description is required")
     .isLength({ min: 10 })
     .withMessage("Description must be at least 10 characters"),
-  body("price")
-    .isFloat({ min: 0 })
-    .withMessage("Price must be a positive number"),
   body("duration").trim().notEmpty().withMessage("Duration is required"),
-  body("category").trim().notEmpty().withMessage("Category is required"),
-  body("level")
-    .optional()
-    .isIn(["Beginner", "Intermediate", "Advanced"])
-    .withMessage("Level must be Beginner, Intermediate, or Advanced"),
   validate,
 ];
 
@@ -60,14 +52,6 @@ const updateCourseValidator = [
     .trim()
     .isLength({ min: 10 })
     .withMessage("Description must be at least 10 characters"),
-  body("price")
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage("Price must be a positive number"),
-  body("level")
-    .optional()
-    .isIn(["Beginner", "Intermediate", "Advanced"])
-    .withMessage("Level must be Beginner, Intermediate, or Advanced"),
   validate,
 ];
 
