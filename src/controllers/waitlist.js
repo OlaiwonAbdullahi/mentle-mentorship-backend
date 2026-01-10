@@ -1,4 +1,4 @@
-const Waitlist = require("../models/waitlist");
+const Waitlist = require("../models/Waitlist");
 
 // @desc    Submit contact form
 // @route   POST /api/waitlist
