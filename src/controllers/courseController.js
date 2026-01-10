@@ -6,7 +6,7 @@ const Course = require("../models/Course");
 const getCourses = async (req, res) => {
   try {
     // If admin is authenticated, show all courses, otherwise only published
-    const filter = req.admin ? {} : { isPublished: true };
+    const filter = {};
 
     const courses = await Course.find(filter).sort({ createdAt: -1 });
 
@@ -31,14 +31,6 @@ const getCourse = async (req, res) => {
     const course = await Course.findById(req.params.id);
 
     if (!course) {
-      return res.status(404).json({
-        success: false,
-        message: "Course not found",
-      });
-    }
-
-    // If not admin and course is not published, deny access
-    if (!req.admin && !course.isPublished) {
       return res.status(404).json({
         success: false,
         message: "Course not found",
@@ -135,43 +127,10 @@ const deleteCourse = async (req, res) => {
   }
 };
 
-// @desc    Publish/Unpublish course
-// @route   PATCH /api/courses/:id/publish
-// @access  Private (Admin only)
-const togglePublish = async (req, res) => {
-  try {
-    const course = await Course.findById(req.params.id);
-
-    if (!course) {
-      return res.status(404).json({
-        success: false,
-        message: "Course not found",
-      });
-    }
-
-    course.isPublished = !course.isPublished;
-    await course.save();
-
-    res.json({
-      success: true,
-      data: course,
-      message: `Course ${
-        course.isPublished ? "published" : "unpublished"
-      } successfully`,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
 module.exports = {
   getCourses,
   getCourse,
   createCourse,
   updateCourse,
   deleteCourse,
-  togglePublish,
 };

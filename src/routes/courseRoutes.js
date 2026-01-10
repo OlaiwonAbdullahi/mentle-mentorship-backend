@@ -6,7 +6,6 @@ const {
   createCourse,
   updateCourse,
   deleteCourse,
-  togglePublish,
 } = require("../controllers/courseController");
 const { protect } = require("../middleware/authMiddleware");
 const {
@@ -137,23 +136,5 @@ router.put("/:id", protect, updateCourseValidator, updateCourse);
  *         description: Course deleted
  */
 router.delete("/:id", protect, mongoIdValidator, deleteCourse);
-
-/**
- * @swagger
- * /courses/{id}/publish:
- *   patch:
- *     summary: Toggle course publish status
- *     tags: [Courses]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *     responses:
- *       200:
- *         description: Course status updated
- */
-router.patch("/:id/publish", protect, mongoIdValidator, togglePublish);
 
 module.exports = router;
