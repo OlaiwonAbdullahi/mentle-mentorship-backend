@@ -97,11 +97,27 @@ const mongoIdValidator = [
   validate,
 ];
 
+// Waitlist validators
+const waitlistValidator = [
+  body("name")
+    .trim()
+    .notEmpty()
+    .withMessage("Name is required")
+    .isLength({ min: 2, max: 100 })
+    .withMessage("Name must be between 2 and 100 characters"),
+  body("email")
+    .isEmail()
+    .withMessage("Please provide a valid email")
+    .normalizeEmail(),
+  validate,
+];
+
 module.exports = {
   loginValidator,
   createCourseValidator,
   updateCourseValidator,
   contactValidator,
+  waitlistValidator,
   initiatePaymentValidator,
   mongoIdValidator,
 };

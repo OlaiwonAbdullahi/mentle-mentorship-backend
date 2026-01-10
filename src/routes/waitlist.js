@@ -1,14 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const {
-  submitWaitlist,
-  getWaitlist,
-  getWaitlistItem,
-  toggleReadStatus,
-  deleteWaitlistItem,
-} = require("../controllers/waitlist");
+const { submitWaitlist, getWaitlist } = require("../controllers/waitlist");
 const { protect } = require("../middleware/authMiddleware");
-const { contactValidator, mongoIdValidator } = require("../utils/validators");
+const { waitlistValidator } = require("../utils/validators");
 
 // Public route
 
@@ -43,7 +37,7 @@ const { contactValidator, mongoIdValidator } = require("../utils/validators");
  *       201:
  *         description: Message sent successfully
  */
-router.post("/", contactValidator, submitWaitlist);
+router.post("/", waitlistValidator, submitWaitlist);
 
 // Protected routes (Admin only)
 
@@ -60,59 +54,5 @@ router.post("/", contactValidator, submitWaitlist);
  *         description: List of messages
  */
 router.get("/", protect, getWaitlist);
-
-/**
- * @swagger
- * /waitlist/{id}:
- *   get:
- *     summary: Get message by ID
- *     tags: [Waitlist]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *     responses:
- *       200:
- *         description: Message content
- */
-router.get("/:id", protect, mongoIdValidator, getWaitlistItem);
-
-/**
- * @swagger
- * /waitlist/{id}/read:
- *   patch:
- *     summary: Toggle message read status
- *     tags: [Waitlist]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *     responses:
- *       200:
- *         description: Status updated
- */
-router.patch("/:id/read", protect, mongoIdValidator, toggleReadStatus);
-
-/**
- * @swagger
- * /waitlist/{id}:
- *   delete:
- *     summary: Delete a message
- *     tags: [Waitlist]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *     responses:
- *       200:
- *         description: Message deleted
- */
-router.delete("/:id", protect, mongoIdValidator, deleteWaitlistItem);
 
 module.exports = router;
