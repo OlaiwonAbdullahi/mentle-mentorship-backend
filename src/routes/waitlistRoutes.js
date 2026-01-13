@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { submitWaitlist, getWaitlist } = require("../controllers/waitlist");
+const { submitWaitlist, getWaitlist } = require("../controllers/waitlistController");
 const { protect } = require("../middleware/authMiddleware");
 const { waitlistValidator } = require("../utils/validators");
 

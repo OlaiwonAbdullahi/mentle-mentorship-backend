@@ -1,14 +1,23 @@
 const Admin = require("../models/Admin");
 const generateToken = require("../utils/generateToken");
 
-// @desc    Register admin (first time setup - you can disable this after creating admin)
-// @route   POST /api/auth/register
-// @access  Public (should be disabled after first admin creation)
+
+// POST /api/auth/register
+//(should be disabled after first admin creation)
 const registerAdmin = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Check if admin exists
+    // Check if any admin exists
+    const anyAdminExists = await Admin.countDocuments();
+    if (anyAdminExists > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin registration is restricted. An admin already exists.",
+      });
+    }
+
+    // Check if this specific email exists
     const adminExists = await Admin.findOne({ email });
 
     if (adminExists) {
@@ -49,9 +58,8 @@ const registerAdmin = async (req, res) => {
   }
 };
 
-// @desc    Login admin
-// @route   POST /api/auth/login
-// @access  Public
+
+// POST /api/auth/login
 const loginAdmin = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -83,9 +91,7 @@ const loginAdmin = async (req, res) => {
   }
 };
 
-// @desc    Get current admin profile
-// @route   GET /api/auth/me
-// @access  Private
+// Get current admin profile
 const getMe = async (req, res) => {
   try {
     const admin = await Admin.findById(req.admin._id);
@@ -102,12 +108,9 @@ const getMe = async (req, res) => {
   }
 };
 
-// @desc    Logout admin
-// @route   POST /api/auth/logout
-// @access  Private
+// admin logout logic
 const logout = async (req, res) => {
   try {
-    // Since we're using JWT, logout is handled client-side by removing the token
     res.json({
       success: true,
       message: "Logged out successfully",

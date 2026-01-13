@@ -1,16 +1,14 @@
 const Payment = require("../models/Payment");
 const Course = require("../models/Course");
+const Enrollment = require("../models/Enrollment");
 const { initializePayment, verifyPayment } = require("../utils/paystack");
 const crypto = require("crypto");
 
-// @desc    Initiate payment for a course
-// @route   POST /api/payments/initiate
-// @access  Public
+//  Initiate payment for a course
 const initiatePaymentForCourse = async (req, res) => {
   try {
     const { courseId, customerName, customerEmail, customerPhone } = req.body;
 
-    // Check if course exists and is published
     const course = await Course.findById(courseId);
 
     if (!course) {
@@ -27,27 +25,31 @@ const initiatePaymentForCourse = async (req, res) => {
       });
     }
 
-    // Generate unique reference
     const reference = `MNTLE-${Date.now()}-${crypto
       .randomBytes(4)
       .toString("hex")}`;
-
-    // Create payment record
     const payment = await Payment.create({
       course: courseId,
       customerName,
       customerEmail,
       customerPhone,
-      amount: course.price,
-      currency: course.currency,
+      amount: course.price_in_ngn,
+      currency: "NGN",
       reference,
       status: "pending",
     });
 
+    // Update enrollment with paystack reference
+    const enrollment = await Enrollment.findOne({ email: customerEmail, course: courseId, status: "pending" });
+    if (enrollment) {
+      enrollment.paystackReference = reference;
+      await enrollment.save();
+    }
+
     // Initialize payment with Paystack
     const paystackResponse = await initializePayment(
       customerEmail,
-      course.price,
+      course.price_in_ngn,
       reference,
       {
         courseId,
@@ -79,9 +81,7 @@ const initiatePaymentForCourse = async (req, res) => {
   }
 };
 
-// @desc    Verify payment
-// @route   POST /api/payments/verify
-// @access  Public
+// Verify payment
 const verifyPaymentTransaction = async (req, res) => {
   try {
     const { reference } = req.body;
@@ -103,7 +103,7 @@ const verifyPaymentTransaction = async (req, res) => {
       });
     }
 
-    // If already verified, return success
+    // If already verified
     if (payment.status === "success") {
       return res.json({
         success: true,
@@ -116,31 +116,32 @@ const verifyPaymentTransaction = async (req, res) => {
     const paystackVerification = await verifyPayment(reference);
 
     if (paystackVerification.data.status === "success") {
-      // Update payment record
-      payment.status = "success";
-      payment.paidAt = new Date();
-      payment.paymentMethod = paystackVerification.data.channel;
-      await payment.save();
+      const enrollment = await Enrollment.findOne({ paystackReference: reference });
 
-      // Increment course enrollment count
-      await Course.findByIdAndUpdate(payment.course._id, {
-        $inc: { enrollmentCount: 1 },
-      });
+      if (enrollment) {
+        enrollment.status = "paid";
+        enrollment.paidAt = new Date();
+        await enrollment.save();
 
-      res.json({
-        success: true,
-        message: "Payment verified successfully",
-        data: payment,
-      });
+        await Course.findByIdAndUpdate(enrollment.course, {
+          $inc: { enrollmentCount: 1 },
+        });
+
+        res.json({
+          success: true,
+          message: "Payment verified and enrollment completed successfully",
+          data: enrollment,
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: "Enrollment record not found for this reference",
+        });
+      }
     } else {
-      // Update payment status to failed
-      payment.status = "failed";
-      await payment.save();
-
       res.status(400).json({
         success: false,
         message: "Payment verification failed",
-        data: payment,
       });
     }
   } catch (error) {
@@ -151,9 +152,7 @@ const verifyPaymentTransaction = async (req, res) => {
   }
 };
 
-// @desc    Get payment by transaction ID
-// @route   GET /api/payments/:transactionId
-// @access  Public (guest can check their payment)
+//  Get payment by transaction ID
 const getPaymentByTransaction = async (req, res) => {
   try {
     const { transactionId } = req.params;
@@ -181,14 +180,11 @@ const getPaymentByTransaction = async (req, res) => {
   }
 };
 
-// @desc    Get all payments
-// @route   GET /api/payments
-// @access  Private (Admin only)
+// Get all payments
 const getAllPayments = async (req, res) => {
   try {
     const { status, courseId } = req.query;
 
-    // Build filter
     const filter = {};
     if (status) filter.status = status;
     if (courseId) filter.course = courseId;
@@ -197,7 +193,6 @@ const getAllPayments = async (req, res) => {
       .populate("course", "title price")
       .sort({ createdAt: -1 });
 
-    // Calculate total revenue
     const totalRevenue = payments
       .filter((p) => p.status === "success")
       .reduce((sum, p) => sum + p.amount, 0);
@@ -216,12 +211,9 @@ const getAllPayments = async (req, res) => {
   }
 };
 
-// @desc    Paystack webhook handler
-// @route   POST /api/payments/webhook
-// @access  Public (Paystack)
+// Paystack webhook handler
 const handleWebhook = async (req, res) => {
   try {
-    // Verify webhook signature
     const hash = crypto
       .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY)
       .update(JSON.stringify(req.body))
@@ -240,18 +232,35 @@ const handleWebhook = async (req, res) => {
     if (event.event === "charge.success") {
       const { reference } = event.data;
 
+      // Update payment record
       const payment = await Payment.findOne({ reference });
-
       if (payment && payment.status !== "success") {
         payment.status = "success";
         payment.paidAt = new Date();
         payment.paymentMethod = event.data.channel;
         await payment.save();
+      } else if (!payment) {
+        console.error(`[Webhook] Payment not found for reference: ${reference}`);
+      }
+
+      // Find and update enrollment
+      const enrollment = await Enrollment.findOne({ paystackReference: reference });
+      if (enrollment && enrollment.status !== "paid") {
+        enrollment.status = "paid";
+        enrollment.paidAt = new Date();
+        await enrollment.save();
 
         // Increment enrollment count
-        await Course.findByIdAndUpdate(payment.course, {
+        await Course.findByIdAndUpdate(enrollment.course, {
           $inc: { enrollmentCount: 1 },
         });
+
+        console.log(`[Webhook] Successfully processed payment for enrollment: ${enrollment._id}`);
+      } else if (!enrollment) {
+        console.error(`[Webhook] Enrollment not found for reference: ${reference}`);
+        console.error(`[Webhook] Event data:`, JSON.stringify(event.data, null, 2));
+      } else {
+        console.log(`[Webhook] Enrollment ${enrollment._id} already marked as paid`);
       }
     }
 
