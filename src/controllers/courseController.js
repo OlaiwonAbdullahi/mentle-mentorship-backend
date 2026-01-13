@@ -3,7 +3,7 @@ const Course = require("../models/Course");
 // Get all courses
 const getCourses = async (req, res) => {
   try {
-    const filter = req.admin ? {} : { isPublished: true };
+    const filter = {};
 
     const courses = await Course.find(filter).sort({ createdAt: -1 });
 

@@ -43,10 +43,7 @@ const courseSchema = new mongoose.Schema(
       type: String,
       required: [true, "Please add course duration"],
     },
-    isPublished: {
-      type: Boolean,
-      default: false,
-    },
+
     enrollmentCount: {
       type: Number,
       default: 0,
