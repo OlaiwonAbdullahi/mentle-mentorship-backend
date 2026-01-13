@@ -1,12 +1,9 @@
 const Course = require("../models/Course");
 
-// @desc    Get all courses
-// @route   GET /api/courses
-// @access  Public (shows only published) / Private (shows all)
+// Get all courses
 const getCourses = async (req, res) => {
   try {
-    // If admin is authenticated, show all courses, otherwise only published
-    const filter = {};
+    const filter = req.admin ? {} : { isPublished: true };
 
     const courses = await Course.find(filter).sort({ createdAt: -1 });
 
@@ -23,9 +20,7 @@ const getCourses = async (req, res) => {
   }
 };
 
-// @desc    Get single course
-// @route   GET /api/courses/:id
-// @access  Public (if published) / Private (any)
+// Get single course
 const getCourse = async (req, res) => {
   try {
     const course = await Course.findById(req.params.id);
@@ -49,9 +44,7 @@ const getCourse = async (req, res) => {
   }
 };
 
-// @desc    Create course
-// @route   POST /api/courses
-// @access  Private (Admin only)
+// Create course
 const createCourse = async (req, res) => {
   try {
     const course = await Course.create(req.body);
@@ -68,9 +61,7 @@ const createCourse = async (req, res) => {
   }
 };
 
-// @desc    Update course
-// @route   PUT /api/courses/:id
-// @access  Private (Admin only)
+// Update course
 const updateCourse = async (req, res) => {
   try {
     let course = await Course.findById(req.params.id);
@@ -99,9 +90,7 @@ const updateCourse = async (req, res) => {
   }
 };
 
-// @desc    Delete course
-// @route   DELETE /api/courses/:id
-// @access  Private (Admin only)
+// Delete course
 const deleteCourse = async (req, res) => {
   try {
     const course = await Course.findById(req.params.id);

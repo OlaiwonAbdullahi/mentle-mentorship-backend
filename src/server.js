@@ -31,8 +31,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000, 
+  max: 100,
   message: "Too many requests from this IP, please try again later",
 });
 
@@ -59,7 +59,8 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authLimiter, require("./routes/authRoutes"));
 app.use("/api/courses", require("./routes/courseRoutes"));
 app.use("/api/contact", require("./routes/contactRoutes"));
-app.use("/api/waitlist", require("./routes/waitlist"));
+app.use("/api/waitlist", require("./routes/waitlistRoutes"));
+app.use("/api/enrollments", require("./routes/enrollmentRoutes"));
 app.use("/api/payments", require("./routes/paymentRoutes"));
 app.use("/api/dashboard", require("./routes/dashboardRoutes"));
 
@@ -79,6 +80,7 @@ app.get("/", (req, res) => {
       courses: "/api/courses",
       contact: "/api/contact",
       payments: "/api/payments",
+      enrollments: "/api/enrollments",
       dashboard: "/api/dashboard",
       health: "/api/health",
     },
@@ -93,11 +95,8 @@ const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
   console.log(`
-  ================================================
-  🚀 Server running in ${process.env.NODE_ENV} mode
-  🌐 Port: ${PORT}
-  📡 Health: http://localhost:${PORT}/api/health
-  ================================================
+  Server running in ${process.env.NODE_ENV} mode
+  Port: ${PORT}
   `);
 });
 
