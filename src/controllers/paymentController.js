@@ -18,13 +18,6 @@ const initiatePaymentForCourse = async (req, res) => {
       });
     }
 
-    if (!course.isPublished) {
-      return res.status(400).json({
-        success: false,
-        message: "This course is not available for enrollment",
-      });
-    }
-
     const reference = `MNTLE-${Date.now()}-${crypto
       .randomBytes(4)
       .toString("hex")}`;
@@ -40,7 +33,11 @@ const initiatePaymentForCourse = async (req, res) => {
     });
 
     // Update enrollment with paystack reference
-    const enrollment = await Enrollment.findOne({ email: customerEmail, course: courseId, status: "pending" });
+    const enrollment = await Enrollment.findOne({
+      email: customerEmail,
+      course: courseId,
+      status: "pending",
+    });
     if (enrollment) {
       enrollment.paystackReference = reference;
       await enrollment.save();
@@ -116,7 +113,9 @@ const verifyPaymentTransaction = async (req, res) => {
     const paystackVerification = await verifyPayment(reference);
 
     if (paystackVerification.data.status === "success") {
-      const enrollment = await Enrollment.findOne({ paystackReference: reference });
+      const enrollment = await Enrollment.findOne({
+        paystackReference: reference,
+      });
 
       if (enrollment) {
         enrollment.status = "paid";
@@ -240,11 +239,15 @@ const handleWebhook = async (req, res) => {
         payment.paymentMethod = event.data.channel;
         await payment.save();
       } else if (!payment) {
-        console.error(`[Webhook] Payment not found for reference: ${reference}`);
+        console.error(
+          `[Webhook] Payment not found for reference: ${reference}`
+        );
       }
 
       // Find and update enrollment
-      const enrollment = await Enrollment.findOne({ paystackReference: reference });
+      const enrollment = await Enrollment.findOne({
+        paystackReference: reference,
+      });
       if (enrollment && enrollment.status !== "paid") {
         enrollment.status = "paid";
         enrollment.paidAt = new Date();
@@ -255,12 +258,21 @@ const handleWebhook = async (req, res) => {
           $inc: { enrollmentCount: 1 },
         });
 
-        console.log(`[Webhook] Successfully processed payment for enrollment: ${enrollment._id}`);
+        console.log(
+          `[Webhook] Successfully processed payment for enrollment: ${enrollment._id}`
+        );
       } else if (!enrollment) {
-        console.error(`[Webhook] Enrollment not found for reference: ${reference}`);
-        console.error(`[Webhook] Event data:`, JSON.stringify(event.data, null, 2));
+        console.error(
+          `[Webhook] Enrollment not found for reference: ${reference}`
+        );
+        console.error(
+          `[Webhook] Event data:`,
+          JSON.stringify(event.data, null, 2)
+        );
       } else {
-        console.log(`[Webhook] Enrollment ${enrollment._id} already marked as paid`);
+        console.log(
+          `[Webhook] Enrollment ${enrollment._id} already marked as paid`
+        );
       }
     }
 
