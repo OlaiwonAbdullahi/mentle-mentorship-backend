@@ -42,13 +42,6 @@ const enrollmentSchema = new mongoose.Schema(
     },
     serviceOffering: {
       type: String,
-      enum: [
-        "General Mantle Mentorship Program",
-        "Expert Life Transition Programs",
-        "Discipline-Based Skilled Program",
-        "Project-Based Acquisition Program",
-        "Start-up / Young Business Advisory Programs"
-      ],
       required: [true, "Service offering selection is required"],
     },
     motivation: {
