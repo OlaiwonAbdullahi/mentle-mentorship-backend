@@ -1,6 +1,7 @@
 const Course = require("../models/Course");
 const Contact = require("../models/Contact");
 const Payment = require("../models/Payment");
+const Enrollment = require("../models/Enrollment");
 
 // @desc    Get dashboard statistics
 // @route   GET /api/dashboard/stats
@@ -13,7 +14,7 @@ const getDashboardStats = async (req, res) => {
     const totalMessages = await Contact.countDocuments();
     const unreadMessages = await Contact.countDocuments({ isRead: false });
 
-    // Payment statistics
+    // Payment statistics (Paystack specific)
     const totalPayments = await Payment.countDocuments();
     const successfulPayments = await Payment.countDocuments({
       status: "success",
@@ -21,65 +22,79 @@ const getDashboardStats = async (req, res) => {
     const pendingPayments = await Payment.countDocuments({ status: "pending" });
     const failedPayments = await Payment.countDocuments({ status: "failed" });
 
-    // Calculate total revenue
-    const revenueData = await Payment.aggregate([
+    // Enrollment statistics (General)
+    const totalEnrollments = await Enrollment.countDocuments();
+    const paidEnrollments = await Enrollment.countDocuments({ status: "paid" });
+    const pendingEnrollments = await Enrollment.countDocuments({
+      status: "pending",
+    });
+
+    // Calculate total revenue from Paystack (NGN)
+    const paystackRevenueData = await Payment.aggregate([
       { $match: { status: "success" } },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
-    const totalRevenue = revenueData.length > 0 ? revenueData[0].total : 0;
+    const paystackRevenue =
+      paystackRevenueData.length > 0 ? paystackRevenueData[0].total : 0;
 
-    // Get revenue by course
-    const revenueByCourse = await Payment.aggregate([
+    // Calculate manual revenue from European enrollments (EUR)
+    const manualEnrollments = await Enrollment.find({
+      paymentMethod: "manual",
+      status: "paid",
+    }).populate("course", "price_in_euro");
+
+    const manualRevenue = manualEnrollments.reduce((sum, enr) => {
+      return sum + (enr.course?.price_in_euro || 0);
+    }, 0);
+
+    // Get revenue by course (combined)
+    // 1. Paystack revenue by course
+    const paystackByCourse = await Payment.aggregate([
       { $match: { status: "success" } },
       {
         $group: {
           _id: "$course",
-          totalRevenue: { $sum: "$amount" },
-          enrollments: { $sum: 1 },
-        },
-      },
-      {
-        $lookup: {
-          from: "courses",
-          localField: "_id",
-          foreignField: "_id",
-          as: "courseDetails",
-        },
-      },
-      { $unwind: "$courseDetails" },
-      {
-        $project: {
-          courseTitle: "$courseDetails.title",
-          totalRevenue: 1,
-          enrollments: 1,
-        },
-      },
-      { $sort: { totalRevenue: -1 } },
-    ]);
-
-    // Monthly revenue (last 6 months)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-    const monthlyRevenue = await Payment.aggregate([
-      {
-        $match: {
-          status: "success",
-          paidAt: { $gte: sixMonthsAgo },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            year: { $year: "$paidAt" },
-            month: { $month: "$paidAt" },
-          },
-          revenue: { $sum: "$amount" },
+          revenueNGN: { $sum: "$amount" },
           count: { $sum: 1 },
         },
       },
-      { $sort: { "_id.year": 1, "_id.month": 1 } },
     ]);
+
+    // 2. Manual revenue by course
+    const manualByCourseData = await Enrollment.aggregate([
+      { $match: { paymentMethod: "manual", status: "paid" } },
+      {
+        $group: {
+          _id: "$course",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Combine them
+    const coursesFull = await Course.find(
+      {},
+      "title price_in_ngn price_in_euro"
+    );
+    const revenueByCourse = coursesFull
+      .map((course) => {
+        const pData = paystackByCourse.find(
+          (p) => p._id.toString() === course._id.toString()
+        );
+        const mData = manualByCourseData.find(
+          (m) => m._id.toString() === course._id.toString()
+        );
+
+        return {
+          courseId: course._id,
+          courseTitle: course.title,
+          revenueNGN: pData ? pData.revenueNGN : 0,
+          revenueEUR: mData ? mData.count * course.price_in_euro : 0,
+          totalEnrollments:
+            (pData ? pData.count : 0) + (mData ? mData.count : 0),
+        };
+      })
+      .filter((r) => r.totalEnrollments > 0);
 
     res.json({
       success: true,
@@ -92,6 +107,11 @@ const getDashboardStats = async (req, res) => {
           unread: unreadMessages,
           read: totalMessages - unreadMessages,
         },
+        enrollments: {
+          total: totalEnrollments,
+          paid: paidEnrollments,
+          pending: pendingEnrollments,
+        },
         payments: {
           total: totalPayments,
           successful: successfulPayments,
@@ -99,9 +119,9 @@ const getDashboardStats = async (req, res) => {
           failed: failedPayments,
         },
         revenue: {
-          total: totalRevenue,
+          totalNGN: paystackRevenue,
+          totalEUR: manualRevenue,
           byCourse: revenueByCourse,
-          monthly: monthlyRevenue,
         },
       },
     });
@@ -120,7 +140,13 @@ const getRecentActivities = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
 
-    // Recent payments
+    // Recent enrollments (Both Africa and Europe)
+    const recentEnrollments = await Enrollment.find()
+      .populate("course", "title")
+      .sort({ createdAt: -1 })
+      .limit(limit);
+
+    // Recent payments (Africa/Paystack only)
     const recentPayments = await Payment.find()
       .populate("course", "title")
       .sort({ createdAt: -1 })
@@ -139,6 +165,7 @@ const getRecentActivities = async (req, res) => {
     res.json({
       success: true,
       data: {
+        enrollments: recentEnrollments,
         payments: recentPayments,
         messages: recentMessages,
         courses: recentCourses,
