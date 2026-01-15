@@ -31,7 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
+  windowMs: 15 * 60 * 1000,
   max: 100,
   message: "Too many requests from this IP, please try again later",
 });
@@ -58,6 +58,7 @@ app.get("/api/health", (req, res) => {
 // Mount routes
 app.use("/api/auth", authLimiter, require("./routes/authRoutes"));
 app.use("/api/courses", require("./routes/courseRoutes"));
+app.use("/api/schedules", require("./routes/scheduleRoutes"));
 app.use("/api/contact", require("./routes/contactRoutes"));
 app.use("/api/waitlist", require("./routes/waitlistRoutes"));
 app.use("/api/enrollments", require("./routes/enrollmentRoutes"));
@@ -78,6 +79,7 @@ app.get("/", (req, res) => {
     endpoints: {
       auth: "/api/auth",
       courses: "/api/courses",
+      schedules: "/api/schedules",
       contact: "/api/contact",
       payments: "/api/payments",
       enrollments: "/api/enrollments",

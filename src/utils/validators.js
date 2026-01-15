@@ -112,6 +112,60 @@ const waitlistValidator = [
   validate,
 ];
 
+// Schedule validators
+const createScheduleValidator = [
+  body("courseId").isMongoId().withMessage("Invalid course ID"),
+  body("title")
+    .trim()
+    .notEmpty()
+    .withMessage("Schedule title is required")
+    .isLength({ min: 3, max: 200 })
+    .withMessage("Title must be between 3 and 200 characters"),
+  body("description")
+    .trim()
+    .notEmpty()
+    .withMessage("Schedule description is required")
+    .isLength({ min: 10 })
+    .withMessage("Description must be at least 10 characters"),
+  body("week").isInt({ min: 0 }).withMessage("Week must be a positive number"),
+  body("facilitator")
+    .trim()
+    .notEmpty()
+    .withMessage("Facilitator name is required"),
+  body("date")
+    .trim()
+    .notEmpty()
+    .withMessage("Date is required")
+    .isISO8601()
+    .withMessage("Date must be in valid ISO8601 format"),
+  validate,
+];
+
+const updateScheduleValidator = [
+  param("id").isMongoId().withMessage("Invalid schedule ID"),
+  body("courseId").optional().isMongoId().withMessage("Invalid course ID"),
+  body("title")
+    .optional()
+    .trim()
+    .isLength({ min: 3, max: 200 })
+    .withMessage("Title must be between 3 and 200 characters"),
+  body("description")
+    .optional()
+    .trim()
+    .isLength({ min: 10 })
+    .withMessage("Description must be at least 10 characters"),
+  body("week")
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage("Week must be a positive number"),
+  body("facilitator").optional().trim(),
+  body("date")
+    .optional()
+    .isISO8601()
+    .withMessage("Date must be in valid ISO8601 format"),
+  validate,
+];
+
 module.exports = {
   loginValidator,
   createCourseValidator,
@@ -120,4 +174,6 @@ module.exports = {
   waitlistValidator,
   initiatePaymentValidator,
   mongoIdValidator,
+  createScheduleValidator,
+  updateScheduleValidator,
 };
