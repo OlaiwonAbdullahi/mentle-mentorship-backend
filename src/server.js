@@ -58,6 +58,7 @@ app.get("/api/health", (req, res) => {
 // Mount routes
 app.use("/api/auth", authLimiter, require("./routes/authRoutes"));
 app.use("/api/courses", require("./routes/courseRoutes"));
+app.use("/api/commingsoon", require("./routes/commingSoonRoutes"));
 app.use("/api/schedules", require("./routes/scheduleRoutes"));
 app.use("/api/contact", require("./routes/contactRoutes"));
 app.use("/api/waitlist", require("./routes/waitlistRoutes"));

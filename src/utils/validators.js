@@ -176,4 +176,5 @@ module.exports = {
   mongoIdValidator,
   createScheduleValidator,
   updateScheduleValidator,
+  validate,
 };
