@@ -31,9 +31,9 @@ const getCommingSoon = async (req, res) => {
 // Create item
 const createCommingSoon = async (req, res) => {
   try {
-    const { title } = req.body;
+    const { title, subtitle } = req.body;
 
-    const item = await CommingSoon.create({ title });
+    const item = await CommingSoon.create({ title, subtitle });
 
     res.status(201).json({ success: true, data: item });
   } catch (error) {

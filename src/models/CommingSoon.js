@@ -7,6 +7,7 @@ const CommingSoonSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    subtitle: [String],
   },
   {
     timestamps: true,
